@@ -5,6 +5,7 @@ var multer = require('multer');
 var multerS3 = require('multer-s3');
 var db_config = require('../config/db_config.json');
 var router = express.Router();
+var async = require('async');
 
 aws.config.loadFromPath('./config/aws_config.json');
 
@@ -45,13 +46,7 @@ router.get('/:id',function(req,res,next){
           res.sendStatus(500);
         }
         else{
-          if(rows.length>0)
-          {
             res.status(200).send({result: rows});
-          }
-          else{
-            res.status(200).send({result: rows});
-          }
         }
         connection.release();
       });
@@ -74,17 +69,31 @@ router.put('/edit',upload.single('image'),function(req,res,next){
         sql = 'update user set name=?,ph=?,home=?,work=? where id=?';
         inserts = [req.body.name,req.body.ph,req.body.home,req.body.work,req.body.id];
       }
-      connection.query(sql,inserts,function(error,rows){
-        if(error){
-          console.log("connection error"+error);
-          res.status(500).send({result: 'FAIL'});
+      async.series([
+        function(callback) {
+          connection.query(sql,inserts,function(error,rows){
+            if(error){
+              console.log("Connection Error" + error);
+              res.status(500).send({result:'FAIL'});
+            }
+          });
+          callback(null);
+        },
+        function(callback) {
+          connection.query('select id,ph,name,profile,home,work from user where id=?',[req.body.id],function(error,rows){
+            if(error){
+              console.log("Connection Error" + error);
+              res.status(500).send({result:'FAIL'});
+            }
+	           else
+	            {
+		              res.status(200).send({result: 'SUCCESS',info: rows});
+            }
+          });
+          callback(null);
         }
-        else{
-          console.log(req.body);
-          res.status(200).send({result: 'SUCCESS'});
-        }
+      ]);
         connection.release();
-      });
     }
   });
 });

@@ -135,7 +135,7 @@ router.get('/detail/:my_id/:meeting_id',function(req,res,next){
       res.sendStatus(500);
     }
     else{
-      connection.query('select name,profile,place,longitude,latitude from user,my_meeting where meeting=? and participant=id',[req.params.meeting_id],function(error,rows){
+      connection.query('select distinct l.name,if(l.place is null and l.longitude is null and l.latitude is null and r.date is null,"0","1") as is_input,l.place,l.longitude,l.latitude from((select name,pk,my_meeting_id,place,longitude,latitude from user,my_meeting where meeting=? and participant=id) as l left join my_date as r on l.my_meeting_id=r.my_meeting);',[req.params.meeting_id],function(error,rows){
         if(error){
           console.log("connection error"+error);
           res.status(500).send({result:'FAIL'});
@@ -325,14 +325,14 @@ router.put('/profile_edit',upload.single('image'),function(req,res,next){
 });
 
 
-router.delete('/exit',function(req,res,next){
+router.delete('/exit/:my_meeting_id',function(req,res,next){
   pool.getConnection(function(error,connection){
     if(error){
       console.log("getConnection Error"+error);
       res.sendStatus(500);
     }
     else{
-      connection.query('delete from huddle_v2.my_meeting where my_meeting_id=?',[req.body.my_meeting_id],function(error,rows){
+      connection.query('delete from huddle_v2.my_meeting where my_meeting_id=?',[req.params.my_meeting_id],function(error,rows){
         if(error){
           console.log("connection error"+error);
           res.status(500).send({result:'FAIL'});
